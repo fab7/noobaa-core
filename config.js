@@ -303,7 +303,7 @@ config.IO_SEMAPHORE_CAP = Math.max(
     config.IO_STREAM_SEMAPHORE_SIZE_CAP, // minimal size needed to complete jobs in object_io
 );
 
-config.DEDUP_ENABLED = true;
+config.DEDUP_ENABLED = false;  // true; // 20241105
 config.IO_CALC_MD5_ENABLED = true;
 config.IO_CALC_SHA256_ENABLED = true;
 
@@ -391,7 +391,7 @@ config.OBJECT_RECLAIMER_ERROR_DELAY = 3000;
 //////////////////
 
 // SPLIT
-config.CHUNK_SPLIT_AVG_CHUNK = 4 * 1024 * 1024;
+config.CHUNK_SPLIT_AVG_CHUNK = 1 * 1024 * 1024;  // 4 * 1024 *1024; // 20241105
 config.CHUNK_SPLIT_DELTA_CHUNK = config.CHUNK_SPLIT_AVG_CHUNK / 4;
 
 // CODER
@@ -402,7 +402,7 @@ config.CHUNK_CODER_CIPHER_TYPE = 'aes-256-gcm';
 
 // ERASURE CODES
 config.CHUNK_CODER_REPLICAS = 1;
-config.CHUNK_CODER_EC_DATA_FRAGS = 4;
+config.CHUNK_CODER_EC_DATA_FRAGS = 5;  // 4; // 20241105
 config.CHUNK_CODER_EC_PARITY_FRAGS = 2;
 config.CHUNK_CODER_EC_PARITY_TYPE = 'cm256';
 config.CHUNK_CODER_EC_TOLERANCE_THRESHOLD = 2;
@@ -947,8 +947,8 @@ config.BLOCK_STORE_FS_CACHED_DF_MAX_TIME = 30 * 1000; // 30 seconds
 config.BLOCK_STORE_FS_CACHED_DF_MIN_TIME = 1 * 1000; // 1 seconds
 config.BLOCK_STORE_FS_CACHED_DF_MIN_SPACE = 1 * 1024 * 1024 * 1024; // 1 GB
 
-config.BLOCK_STORE_FS_TMFS_ENABLED = false;
-config.BLOCK_STORE_FS_MAPPING_INFO_ENABLED = false;
+config.BLOCK_STORE_FS_TMFS_ENABLED = true;
+config.BLOCK_STORE_FS_MAPPING_INFO_ENABLED = true;
 config.BLOCK_STORE_FS_TMFS_ALLOW_MIGRATED_READS = true;
 
 config.BLOCK_STORE_FS_XATTR_BLOCK_MD = 'user.noobaa.block_md';
