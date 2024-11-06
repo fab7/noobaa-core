@@ -391,8 +391,8 @@ config.OBJECT_RECLAIMER_ERROR_DELAY = 3000;
 //////////////////
 
 // SPLIT
-config.CHUNK_SPLIT_AVG_CHUNK = 1 * 1024 * 1024;  // 4 * 1024 *1024; // 20241105
-config.CHUNK_SPLIT_DELTA_CHUNK = config.CHUNK_SPLIT_AVG_CHUNK / 4;
+config.CHUNK_SPLIT_AVG_CHUNK = 1 * 1024 * 1024 *1024;  // 4 * 1024 *1024;                    // 20241106
+config.CHUNK_SPLIT_DELTA_CHUNK = 0;                    // config.CHUNK_SPLIT_AVG_CHUNK / 4;  // 20241106
 
 // CODER
 config.CHUNK_CODER_DIGEST_TYPE = 'sha384';
