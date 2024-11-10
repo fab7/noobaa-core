@@ -303,7 +303,7 @@ config.IO_SEMAPHORE_CAP = Math.max(
     config.IO_STREAM_SEMAPHORE_SIZE_CAP, // minimal size needed to complete jobs in object_io
 );
 
-config.DEDUP_ENABLED = false;  // true; // 20241105
+config.DEDUP_ENABLED = false;  // was true; // 20241105
 config.IO_CALC_MD5_ENABLED = true;
 config.IO_CALC_SHA256_ENABLED = true;
 
@@ -391,8 +391,8 @@ config.OBJECT_RECLAIMER_ERROR_DELAY = 3000;
 //////////////////
 
 // SPLIT
-config.CHUNK_SPLIT_AVG_CHUNK = 1 * 1024 * 1024 *1024;  // 4 * 1024 *1024;                    // 20241106
-config.CHUNK_SPLIT_DELTA_CHUNK = 0;                    // config.CHUNK_SPLIT_AVG_CHUNK / 4;  // 20241106
+config.CHUNK_SPLIT_AVG_CHUNK = 1 * 1024 * 1024 *1024;  // was 4 * 1024 *1024;                    // 20241106
+config.CHUNK_SPLIT_DELTA_CHUNK = 0;                    // was config.CHUNK_SPLIT_AVG_CHUNK / 4;  // 20241106
 
 // CODER
 config.CHUNK_CODER_DIGEST_TYPE = 'sha384';
@@ -402,11 +402,11 @@ config.CHUNK_CODER_CIPHER_TYPE = 'aes-256-gcm';
 
 // ERASURE CODES
 config.CHUNK_CODER_REPLICAS = 1;
-config.CHUNK_CODER_EC_DATA_FRAGS = 3;  // 4; // 20241105
+config.CHUNK_CODER_EC_DATA_FRAGS = 3;  // was 4; // 20241105
 config.CHUNK_CODER_EC_PARITY_FRAGS = 2;
 config.CHUNK_CODER_EC_PARITY_TYPE = 'cm256';
 config.CHUNK_CODER_EC_TOLERANCE_THRESHOLD = 2;
-config.CHUNK_CODER_EC_IS_DEFAULT = false;
+config.CHUNK_CODER_EC_IS_DEFAULT = true;  // was false; // 20241110
 
 // DEDUP
 config.MIN_CHUNK_AGE_FOR_DEDUP = 60 * 60 * 1000; // 1 hour
