@@ -59,6 +59,18 @@ ENV ENDPOINT_NODE_OPTIONS=''
 #   Cache: Rebuild when we adding/removing requirments
 ##############################################################
 
+# Set the environment variable using the ARG value
+ARG CENTOS_VER
+ENV CENTOS_VER=${CENTOS_VER}
+
+# Only run if CENTOS_VER is 8
+RUN if [ "$CENTOS_VER" = "8" ]; then \
+    echo "Changing repo to 'vault.centos.org' due to 'mirrorlist.centos.org' is EOL and doesn't exist anymore"; \
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*; \
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*; \
+    yum update -y; \
+fi
+
 RUN dnf install -y epel-release
 RUN dnf install -y -q bash \
     boost \
