@@ -5,7 +5,7 @@ TESTER_TAG?="noobaa-tester"
 NOOBAA_RPM_TAG?="noobaa-rpm-build"
 POSTGRES_IMAGE?="centos/postgresql-12-centos7"
 MONGO_IMAGE?="centos/mongodb-36-centos7"
-CENTOS_VER?=9
+CENTOS_VER?=8
 
 CONTAINER_ENGINE?=$(shell docker version >/dev/null 2>&1 && echo docker)
 ifeq ($(CONTAINER_ENGINE),)
@@ -146,6 +146,14 @@ noobaa: base
 	$(CONTAINER_ENGINE) tag noobaa $(NOOBAA_TAG)
 	@echo "##\033[1;32m Build image noobaa done.\033[0m"
 .PHONY: noobaa
+
+noobaa-tmfs: base
+	@echo "\n##\033[1;32m Build image noobaa-tmfs ...\033[0m"
+	@echo "$(CONTAINER_ENGINE) build $(CONTAINER_PLATFORM_FLAG)"
+	$(CONTAINER_ENGINE) build $(CONTAINER_PLATFORM_FLAG) $(CPUSET) --build-arg CENTOS_VER=$(CENTOS_VER) --build-arg BUILD_S3SELECT=$(BUILD_S3SELECT) --build-arg BUILD_S3SELECT_PARQUET=$(BUILD_S3SELECT_PARQUET) -f src/deploy/NVA_build/NooBaa-Tmfs.Dockerfile $(CACHE_FLAG) $(NETWORK_FLAG) -t noobaa-tmfs --build-arg GIT_COMMIT=$(GIT_COMMIT) . $(REDIRECT_STDOUT)
+	$(CONTAINER_ENGINE) tag noobaa-tmfs $(NOOBAA_TAG)-tmfs
+	@echo "##\033[1;32m Build image noobaa-tmfs done.\033[0m"
+.PHONY: noobaa-tmfs
 
 executable: base
 	@echo "\n##\033[1;32m Build image noobaa-core-executable ...\033[0m"
