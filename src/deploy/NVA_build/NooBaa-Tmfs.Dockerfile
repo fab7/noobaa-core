@@ -253,8 +253,14 @@ ENV LD_PRELOAD=/usr/lib64/libjemalloc.so.2
 ###############
 # EXEC SETUP #
 ###############
-# Run as non root user that belongs to root 
+# Create the 'noob' user and add it to the 'root' group
 RUN useradd -u 10001 -g 0 -m -d /home/noob -s /bin/bash noob
+
+# Add the 'noob' user to the sudoers file with permissions to run mount and umount commands
+RUN dnf install -y sudo
+RUN echo "noob ALL=(ALL) NOPASSWD: /usr/bin/mount, /usr/bin/umount" >> /etc/sudoers
+
+# Switch to the 'noob' user
 USER 10001:0
 
 # We are using CMD and not ENDPOINT so 
