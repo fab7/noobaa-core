@@ -777,7 +777,7 @@ async function read_node_mapping(req) {
  */
 async function read_object_md(req) {
     dbg.log1('object_server.read_object_md:', req.rpc_params);
-    const { bucket, key, md_conditions, adminfo, encryption } = req.rpc_params;
+    const { bucket, key, md_conditions, adminfo, encryption, version_id } = req.rpc_params;
 
     if (adminfo && req.role !== 'admin') {
         throw new RpcError('UNAUTHORIZED', 'read_object_md: role should be admin');
@@ -786,7 +786,8 @@ async function read_object_md(req) {
     const obj = await find_object_md(req);
 
     // Check if the requesting account is authorized to read the object
-    if (!await req.has_s3_bucket_permission(req.bucket, 's3:GetObject', '/' + obj.key)) {
+    const action = version_id ? 's3:GetObjectVersion' : 's3:GetObject';
+    if (!await req.has_s3_bucket_permission(req.bucket, action, '/' + obj.key)) {
         throw new RpcError('UNAUTHORIZED', 'requesting account is not authorized to read the object');
     }
 
@@ -948,6 +949,7 @@ async function delete_multiple_objects_by_filter(req) {
     dbg.log1(`delete_multiple_objects_by_filter: bucket=${req.bucket.name} filter=${util.inspect(req.rpc_params)}`);
     const key = new RegExp('^' + _.escapeRegExp(req.rpc_params.prefix));
     const bucket_id = req.bucket._id;
+    const reply_objects = req.rpc_params.reply_objects;
     // TODO: change it to perform changes in batch. Won't scale.
     const query = {
         bucket_id,
@@ -971,7 +973,16 @@ async function delete_multiple_objects_by_filter(req) {
             }))
         }
     }));
-    return { num_objects_deleted: objects.length };
+
+    const reply = { num_objects_deleted: objects.length };
+    if (reply_objects) {
+        //reply needs to include deleted objects
+        //(this is used for LifecycleExpiratoin event notifications)
+        //so map the md into (api friendly) object info
+        reply.deleted_objects = _.map(objects, get_object_info);
+    }
+
+    return reply;
 }
 
 /**

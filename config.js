@@ -64,15 +64,16 @@ config.BUFFERS_MEM_LIMIT_MIN = 32 * 1024 * 1024; // just some workable minimum s
 config.BUFFERS_MEM_LIMIT_MAX = 4 * 1024 * 1024 * 1024;
 config.BUFFERS_MEM_LIMIT = Math.min(
     config.BUFFERS_MEM_LIMIT_MAX,
-    Math.max(Math.floor(config.CONTAINER_MEM_LIMIT / 4), config.BUFFERS_MEM_LIMIT_MIN,)
+    Math.max(Math.floor(config.CONTAINER_MEM_LIMIT / 4), config.BUFFERS_MEM_LIMIT_MIN)
 );
 
 ////////////////////////
 // CERTIFICATE CONFIG //
 ////////////////////////
 
-config.STS_SERVICE_CERT_PATH = '/etc/sts-secret';
 config.S3_SERVICE_CERT_PATH = '/etc/s3-secret';
+config.STS_SERVICE_CERT_PATH = '/etc/sts-secret';
+config.IAM_SERVICE_CERT_PATH = '/etc/iam-secret';
 config.MGMT_SERVICE_CERT_PATH = '/etc/mgmt-secret';
 config.EXTERNAL_DB_SERVICE_CERT_PATH = '/etc/external-db-secret';
 
@@ -104,7 +105,6 @@ config.AGENT_HEARTBEAT_GRACE_TIME = 10 * 60 * 1000; // grace period before an ag
 config.CLOUD_ALERT_GRACE_TIME = 3 * 60 * 1000; // grace period before dispatching alert on cloud node status
 config.AGENT_RESPONSE_TIMEOUT = 1 * 60 * 1000;
 config.AGENT_TEST_CONNECTION_TIMEOUT = 1 * 60 * 1000;
-config.STORE_PERF_TEST_INTERVAL = 60 * 60 * 1000; // perform test_store_perf every 1 hour
 config.CLOUD_MAX_ALLOWED_IO_TEST_ERRORS = 3;
 
 config.ENABLE_DEV_RANDOM_SEED = process.env.DISABLE_DEV_RANDOM_SEED === 'false' || false;
@@ -153,9 +153,8 @@ config.ENDPOINT_HTTP_SERVER_REQUEST_TIMEOUT = 300 * 1000;
 config.ENDPOINT_HTTP_SERVER_KEEPALIVE_TIMEOUT = 5 * 1000;
 config.ENDPOINT_HTTP_MAX_REQUESTS_PER_SOCKET = 0; // 0 = no limit
 
-// For now we enable fixed CORS for all buckets
-// but this should become a setting per bucket which is configurable
-// with the s3 put-bucket-cors api.
+// For now we enable fixed CORS only for sts
+// for S3 per bucket is configurabl with the s3 put-bucket-cors api.
 // note that browsers do not really allow origin=* with credentials,
 // but we just allow both from our side for simplicity.
 config.S3_CORS_ENABLED = true;
@@ -201,7 +200,7 @@ config.S3_RESTORE_REQUEST_MAX_DAYS_BEHAVIOUR = 'TRUNCATE';
 /**
  * S3_MAX_KEY_LENGTH controls the maximum key length that will be accepted
  * by NooBaa endpoints.
- * 
+ *
  * This value is 1024 bytes for S3 but the default is `Infinity`
  */
 config.S3_MAX_KEY_LENGTH = Infinity;
@@ -209,7 +208,7 @@ config.S3_MAX_KEY_LENGTH = Infinity;
 /**
  * S3_MAX_BUCKET_NAME_LENGTH controls the maximum bucket name length that
  * will be accepted by NooBaa endpoints.
- * 
+ *
  * This value is 63 bytes for S3 but the default is `Infinity`
  */
 config.S3_MAX_BUCKET_NAME_LENGTH = Infinity;
@@ -231,7 +230,8 @@ config.ROOT_KEY_MOUNT = '/etc/noobaa-server/root_keys';
 
 config.DB_TYPE = /** @type {nb.DBType} */ (process.env.DB_TYPE || 'postgres');
 
-config.POSTGRES_MAX_CLIENTS = (process.env.LOCAL_MD_SERVER === 'true') ? 80 : 10;
+config.POSTGRES_DEFAULT_MAX_CLIENTS = 10;
+config.POSTGRES_MD_MAX_CLIENTS = (process.env.LOCAL_MD_SERVER === 'true') ? 70 : 10;
 
 ///////////////////
 // SYSTEM CONFIG //
@@ -493,7 +493,7 @@ config.DEBUG_MODE_PERIOD = 10 * 60 * 1000; // 10 minutes for increased debug lev
 config.dbg_log_level = 0;
 config.DEBUG_FACILITY = 'LOG_LOCAL0';
 config.EVENT_FACILITY = 'LOG_LOCAL2';
-config.EVENT_LOGGING_ENABLED = true;
+config.EVENT_LOGGING_ENABLED = false; // should be changed in NC NSFS configuration
 config.EVENT_LEVEL = 5;
 
 config.LOG_TO_STDERR_ENABLED = true;
@@ -503,6 +503,7 @@ config.LOG_COLOR_ENABLED = process.env.NOOBAA_LOG_COLOR ? process.env.NOOBAA_LOG
 
 // TEST Mode
 config.test_mode = false;
+config.allow_anonymous_access_in_test = false; // used for emulating ACL='public-read' for ceph-s3 tests
 
 // On Premise NVA params
 config.on_premise = {
@@ -637,6 +638,9 @@ config.INLINE_MAX_SIZE = 4096;
 // Object SDK bucket cache expiration time
 config.OBJECT_SDK_BUCKET_CACHE_EXPIRY_MS = 60000;
 
+// Object SDK bucket_namespace_cache allow stat of the config file
+config.NC_ENABLE_BUCKET_NS_CACHE_STAT_VALIDATION = true;
+
 //////////////////////////////
 // OPERATOR RELATED         //
 //////////////////////////////
@@ -751,11 +755,11 @@ config.NSFS_BUF_POOL_MEM_LIMIT_XS = Math.min(Math.floor(config.NSFS_MAX_MEM_SIZE
 config.NSFS_BUF_POOL_MEM_LIMIT_S = Math.min(Math.floor(config.NSFS_MAX_MEM_SIZE_S / config.NSFS_BUF_SIZE_S),
     config.NSFS_WANTED_BUFFERS_NUMBER) * config.NSFS_BUF_SIZE_S;
 // Semaphore size will give 90% of remainning memory to large buffer size, 10% to medium
-config.NSFS_BUF_POOL_MEM_LIMIT_M = range_utils.align_down((config.BUFFERS_MEM_LIMIT -
-    config.NSFS_BUF_POOL_MEM_LIMIT_S - config.NSFS_BUF_POOL_MEM_LIMIT_XS) * 0.1,
+config.NSFS_BUF_POOL_MEM_LIMIT_M = range_utils.align_down(
+    (config.BUFFERS_MEM_LIMIT - config.NSFS_BUF_POOL_MEM_LIMIT_S - config.NSFS_BUF_POOL_MEM_LIMIT_XS) * 0.1,
     config.NSFS_BUF_SIZE_M);
-config.NSFS_BUF_POOL_MEM_LIMIT_L = range_utils.align_down((config.BUFFERS_MEM_LIMIT -
-    config.NSFS_BUF_POOL_MEM_LIMIT_S - config.NSFS_BUF_POOL_MEM_LIMIT_XS) * 0.9,
+config.NSFS_BUF_POOL_MEM_LIMIT_L = range_utils.align_down(
+    (config.BUFFERS_MEM_LIMIT - config.NSFS_BUF_POOL_MEM_LIMIT_S - config.NSFS_BUF_POOL_MEM_LIMIT_XS) * 0.9,
     config.NSFS_BUF_SIZE_L);
 
 config.NSFS_BUF_WARMUP_SPARSE_FILE_READS = true;
@@ -877,6 +881,8 @@ config.NSFS_LOW_FREE_SPACE_PERCENT_UNLEASH = 0.10;
 
 // anonymous account name
 config.ANONYMOUS_ACCOUNT_NAME = 'anonymous';
+
+config.NFSF_UPLOAD_STREAM_MEM_THRESHOLD = 8 * 1024 * 1024;
 
 ////////////////////////////
 // NSFS NON CONTAINERIZED //

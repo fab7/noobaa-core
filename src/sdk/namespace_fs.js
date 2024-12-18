@@ -19,7 +19,7 @@ const stream_utils = require('../util/stream_utils');
 const buffer_utils = require('../util/buffer_utils');
 const size_utils = require('../util/size_utils');
 const native_fs_utils = require('../util/native_fs_utils');
-const ChunkFS = require('../util/chunk_fs');
+const FileWriter = require('../util/file_writer');
 const LRUCache = require('../util/lru_cache');
 const nb_native = require('../util/nb_native');
 const RpcError = require('../rpc/rpc_error');
@@ -68,11 +68,11 @@ const NULL_VERSION_ID = 'null';
 const NULL_VERSION_SUFFIX = '_' + NULL_VERSION_ID;
 const XATTR_STORAGE_CLASS_KEY = XATTR_USER_PREFIX + 'storage_class';
 
-const versioning_status_enum = {
+const VERSIONING_STATUS_ENUM = Object.freeze({
     VER_ENABLED: 'ENABLED',
     VER_SUSPENDED: 'SUSPENDED',
     VER_DISABLED: 'DISABLED'
-};
+});
 const version_format = /^[a-z0-9]+$/;
 
 // describes the status of the copy that was done, default is fallback
@@ -80,11 +80,11 @@ const version_format = /^[a-z0-9]+$/;
 // IS_SAME_INODE = source and target are the same inode, nothing to copy
 // FALLBACK = will be reported when link on server side copy failed
 // or on non server side copy
-const copy_status_enum = {
+const COPY_STATUS_ENUM = Object.freeze({
     LINKED: 'LINKED',
     SAME_INODE: 'SAME_INODE',
     FALLBACK: 'FALLBACK'
-};
+});
 
 const XATTR_METADATA_IGNORE_LIST = [
     XATTR_STORAGE_CLASS_KEY,
@@ -486,7 +486,7 @@ class NamespaceFS {
         this.bucket_id = bucket_id;
         this.namespace_resource_id = namespace_resource_id;
         this.access_mode = access_mode;
-        this.versioning = (config.NSFS_VERSIONING_ENABLED && versioning) || versioning_status_enum.VER_DISABLED;
+        this.versioning = (config.NSFS_VERSIONING_ENABLED && versioning) || VERSIONING_STATUS_ENUM.VER_DISABLED;
         this.stats = stats;
         this.force_md5_etag = force_md5_etag;
         this.warmup_buffer = nb_native().fs.dio_buffer_alloc(4096);
@@ -1140,9 +1140,7 @@ class NamespaceFS {
             // end the stream
             res.end();
 
-            // in case of transform streams such as ChunkFS there is also a readable part. since we expect write stream
-            // and don't care about the readable part, set readable: false
-            await stream_utils.wait_finished(res, { readable: false, signal: object_sdk.abort_controller.signal });
+            await stream_utils.wait_finished(res, { signal: object_sdk.abort_controller.signal });
             object_sdk.throw_if_aborted();
 
             dbg.log0('NamespaceFS: read_object_stream completed file', file_path, {
@@ -1209,7 +1207,7 @@ class NamespaceFS {
             await this._throw_if_storage_class_not_supported(params.storage_class);
 
             upload_params = await this._start_upload(fs_context, object_sdk, file_path, params, open_mode);
-            if (!params.copy_source || upload_params.copy_res === copy_status_enum.FALLBACK) {
+            if (!params.copy_source || upload_params.copy_res === COPY_STATUS_ENUM.FALLBACK) {
                 // We are taking the buffer size closest to the sized upload
                 const bp = multi_buffer_pool.get_buffers_pool(params.size);
                 const upload_res = await bp.sem.surround_count(
@@ -1254,16 +1252,16 @@ class NamespaceFS {
 
         let copy_res;
         if (force_copy_fallback) {
-            copy_res = copy_status_enum.FALLBACK;
+            copy_res = COPY_STATUS_ENUM.FALLBACK;
         } else if (params.copy_source) {
             copy_res = await this._try_copy_file(fs_context, params, file_path, upload_path);
         }
 
         if (copy_res) {
-            if (copy_res !== copy_status_enum.FALLBACK) {
+            if (copy_res !== COPY_STATUS_ENUM.FALLBACK) {
                 // open file after copy link/same inode should use read open mode
                 open_mode = config.NSFS_OPEN_READ_MODE;
-                if (copy_res === copy_status_enum.SAME_INODE) open_path = file_path;
+                if (copy_res === COPY_STATUS_ENUM.SAME_INODE) open_path = file_path;
             }
         }
         const target_file = await native_fs_utils.open_file(fs_context, this.bucket_path, open_path, open_mode);
@@ -1280,15 +1278,15 @@ class NamespaceFS {
         const source_file_path = await this._find_version_path(fs_context, params.copy_source);
         await this._check_path_in_bucket_boundaries(fs_context, source_file_path);
         // await this._fail_if_archived_or_sparse_file(fs_context, source_file_path, stat);
-        let res = copy_status_enum.FALLBACK;
+        let res = COPY_STATUS_ENUM.FALLBACK;
         if (this._is_versioning_disabled()) {
             try {
                 // indicates a retry situation in which the source and target point to the same inode
                 const same_inode = await this._is_same_inode(fs_context, source_file_path, file_path);
-                if (same_inode) return copy_status_enum.SAME_INODE;
+                if (same_inode) return COPY_STATUS_ENUM.SAME_INODE;
                 // Doing a hard link.
                 await nb_native().fs.link(fs_context, source_file_path, upload_path);
-                res = copy_status_enum.LINKED;
+                res = COPY_STATUS_ENUM.LINKED;
             } catch (e) {
                 dbg.warn('NamespaceFS: COPY using link failed with:', e);
             }
@@ -1337,8 +1335,8 @@ class NamespaceFS {
     async _finish_upload({ fs_context, params, open_mode, target_file, upload_path, file_path, digest = undefined,
             copy_res = undefined, offset }) {
         const part_upload = file_path === upload_path;
-        const same_inode = params.copy_source && copy_res === copy_status_enum.SAME_INODE;
-        const should_replace_xattr = params.copy_source ? copy_res === copy_status_enum.FALLBACK : true;
+        const same_inode = params.copy_source && copy_res === COPY_STATUS_ENUM.SAME_INODE;
+        const should_replace_xattr = params.copy_source ? copy_res === COPY_STATUS_ENUM.FALLBACK : true;
         const is_dir_content = this._is_directory_content(file_path, params.key);
 
         const stat = await target_file.stat(fs_context);
@@ -1388,7 +1386,7 @@ class NamespaceFS {
         dbg.log1('NamespaceFS._finish_upload:', open_mode, file_path, upload_path, fs_xattr);
 
         if (!same_inode && !part_upload) {
-            await this._move_to_dest(fs_context, upload_path, file_path, target_file, open_mode, params.key);
+            await this._move_to_dest(fs_context, upload_path, file_path, target_file, open_mode, params.key, is_dir_content);
         }
 
         // when object is a dir, xattr are set on the folder itself and the content is in .folder file
@@ -1421,13 +1419,16 @@ class NamespaceFS {
     }
 
     // move to dest GPFS (wt) / POSIX (w / undefined) - non part upload
-    async _move_to_dest(fs_context, source_path, dest_path, target_file, open_mode, key) {
+    async _move_to_dest(fs_context, source_path, dest_path, target_file, open_mode, key, is_dir_content) {
+        dbg.log2('_move_to_dest', fs_context, source_path, dest_path, target_file, open_mode, key, is_dir_content);
         let retries = config.NSFS_RENAME_RETRIES;
         // will retry renaming a file in case of parallel deleting of the destination path
         for (;;) {
             try {
                 await native_fs_utils._make_path_dirs(dest_path, fs_context);
-                if (this._is_versioning_disabled()) {
+                if (this._is_versioning_disabled() ||
+                    (this._is_versioning_enabled() && is_dir_content)) {
+                // dir_content is not supported in versioning, hence we will treat it like versioning disabled
                     if (open_mode === 'wt') {
                         await target_file.linkfileat(fs_context, dest_path);
                     } else {
@@ -1563,30 +1564,33 @@ class NamespaceFS {
     // Can be finetuned further on if needed and inserting the Semaphore logic inside
     // Instead of wrapping the whole _upload_stream function (q_buffers lives outside of the data scope of the stream)
     async _upload_stream({ fs_context, params, target_file, object_sdk, offset }) {
-        const { source_stream, copy_source } = params;
+        const { copy_source } = params;
         try {
             // Not using async iterators with ReadableStreams due to unsettled promises issues on abort/destroy
             const md5_enabled = this._is_force_md5_enabled(object_sdk);
-            const chunk_fs = new ChunkFS({
+            const file_writer = new FileWriter({
                 target_file,
                 fs_context,
-                stats: this.stats,
-                namespace_resource_id: this.namespace_resource_id,
-                md5_enabled,
                 offset,
+                md5_enabled,
+                stats: this.stats,
                 bucket: params.bucket,
-                large_buf_size: multi_buffer_pool.get_buffers_pool(undefined).buf_size
+                large_buf_size: multi_buffer_pool.get_buffers_pool(undefined).buf_size,
+                namespace_resource_id: this.namespace_resource_id,
             });
-            chunk_fs.on('error', err1 => dbg.error('namespace_fs._upload_stream: error occured on stream ChunkFS: ', err1));
+            file_writer.on('error', err => dbg.error('namespace_fs._upload_stream: error occured on FileWriter: ', err));
+            file_writer.on('finish', arg => dbg.log1('namespace_fs._upload_stream: finish occured on stream FileWriter: ', arg));
+            file_writer.on('close', arg => dbg.log1('namespace_fs._upload_stream: close occured on stream FileWriter: ', arg));
+
             if (copy_source) {
-                await this.read_object_stream(copy_source, object_sdk, chunk_fs);
+                await this.read_object_stream(copy_source, object_sdk, file_writer);
             } else if (params.source_params) {
-                await params.source_ns.read_object_stream(params.source_params, object_sdk, chunk_fs);
+                await params.source_ns.read_object_stream(params.source_params, object_sdk, file_writer);
             } else {
-                await stream_utils.pipeline([source_stream, chunk_fs]);
-                await stream_utils.wait_finished(chunk_fs);
+                await stream_utils.pipeline([params.source_stream, file_writer]);
+                await stream_utils.wait_finished(file_writer);
             }
-            return { digest: chunk_fs.digest, total_bytes: chunk_fs.total_bytes };
+            return { digest: file_writer.digest, total_bytes: file_writer.total_bytes };
         } catch (error) {
             dbg.error('_upload_stream had error: ', error);
             throw error;
@@ -1923,7 +1927,10 @@ class NamespaceFS {
             await this._check_path_in_bucket_boundaries(fs_context, file_path);
             dbg.log0('NamespaceFS: delete_object', file_path);
             let res;
-            if (this._is_versioning_disabled()) {
+            const is_key_dir_path = await this._is_key_dir_path(fs_context, params.key);
+            if (this._is_versioning_disabled() || is_key_dir_path) {
+                // TODO- Directory object (key/) is currently can't co-exist while key (without slash) exists. see -https://github.com/noobaa/noobaa-core/issues/8320
+                // Also, Directory object (key/) is currently not supported combined with versioning - see - https://github.com/noobaa/noobaa-core/issues/8531
                 await this._delete_single_object(fs_context, file_path, params);
             } else {
                 res = params.version_id ?
@@ -2390,7 +2397,8 @@ class NamespaceFS {
         const etag = this._get_etag(stat);
         const create_time = stat.mtime.getTime();
         const encryption = this._get_encryption_info(stat);
-        const version_id = (this._is_versioning_enabled() || this._is_versioning_suspended()) && this._get_version_id_by_xattr(stat);
+        const version_id = ((this._is_versioning_enabled() || this._is_versioning_suspended()) && this._get_version_id_by_xattr(stat)) ||
+            undefined;
         const delete_marker = stat.xattr?.[XATTR_DELETE_MARKER] === 'true';
         const dir_content_type = stat.xattr?.[XATTR_DIR_CONTENT] && ((Number(stat.xattr?.[XATTR_DIR_CONTENT]) > 0 && 'application/octet-stream') || 'application/x-directory');
         const content_type = stat.xattr?.[XATTR_CONTENT_TYPE] ||
@@ -2689,15 +2697,15 @@ class NamespaceFS {
     //////////////////////////
 
     _is_versioning_enabled() {
-        return this.versioning === versioning_status_enum.VER_ENABLED;
+        return this.versioning === VERSIONING_STATUS_ENUM.VER_ENABLED;
     }
 
     _is_versioning_disabled() {
-        return this.versioning === versioning_status_enum.VER_DISABLED;
+        return this.versioning === VERSIONING_STATUS_ENUM.VER_DISABLED;
     }
 
     _is_versioning_suspended() {
-        return this.versioning === versioning_status_enum.VER_SUSPENDED;
+        return this.versioning === VERSIONING_STATUS_ENUM.VER_SUSPENDED;
     }
 
     _get_version_id_by_mode(stat) {
@@ -2780,9 +2788,26 @@ class NamespaceFS {
         const versioned_path = this._get_version_path(key, version_id);
         return versioned_path;
     }
+    /** 
+    * _is_key_dir_path will check if key is pointing to a directory or a file
+    * @param {nb.NativeFSContext} fs_context
+    * @param {string} key
+    * @returns {Promise<boolean>}
+    */
+    async _is_key_dir_path(fs_context, key) {
+        try {
+            const key_path = path.normalize(path.join(this.bucket_path, key));
+            const key_stat = await nb_native().fs.stat(fs_context, key_path, { skip_user_xattr: true });
+            const is_dir = native_fs_utils.isDirectory(key_stat);
+            return is_dir;
+        } catch (err) {
+            dbg.warn('NamespaceFS._is_key_dir_path : error while getting state for key ', key, err);
+        }
+        return false;
+    }
 
     _throw_if_delete_marker(stat, params) {
-        if (this.versioning === versioning_status_enum.VER_ENABLED || this.versioning === versioning_status_enum.VER_SUSPENDED) {
+        if (this.versioning === VERSIONING_STATUS_ENUM.VER_ENABLED || this.versioning === VERSIONING_STATUS_ENUM.VER_SUSPENDED) {
             const xattr_delete_marker = stat.xattr[XATTR_DELETE_MARKER];
             if (xattr_delete_marker) {
                 const basic_err = error_utils.new_error_code('ENOENT', 'Entry is a delete marker');
@@ -3208,7 +3233,7 @@ class NamespaceFS {
                 move_to_dst: { src_file, dst_file, dir_file}
             };
         } catch (err) {
-            dbg.error('NamespaceFS._open_files_gpfs couldn\'t open files', err);
+            dbg.warn('NamespaceFS._open_files_gpfs couldn\'t open files', err);
             await this._close_files_gpfs(fs_context, { src_file, dst_file, dir_file, versioned_file }, open_mode, delete_version);
             throw err;
         }
