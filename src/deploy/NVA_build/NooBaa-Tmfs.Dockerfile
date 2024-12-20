@@ -261,7 +261,7 @@ RUN dnf install -y sudo
 RUN echo "noob ALL=(ALL) NOPASSWD: /usr/bin/mount, /usr/bin/umount" >> /etc/sudoers
 
 # Switch to the 'noob' user
-USER 10001:0
+# USER 10001:0 # [FIXME-20241220-Skip this switch for the time being]
 
 # We are using CMD and not ENDPOINT so 
 # we can override it when we use this image as agent. 
