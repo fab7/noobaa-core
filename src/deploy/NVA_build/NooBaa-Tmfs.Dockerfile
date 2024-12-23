@@ -253,15 +253,20 @@ ENV LD_PRELOAD=/usr/lib64/libjemalloc.so.2
 ###############
 # EXEC SETUP #
 ###############
+
 # Create the 'noob' user and add it to the 'root' group
 RUN useradd -u 10001 -g 0 -m -d /home/noob -s /bin/bash noob
 
-# Add the 'noob' user to the sudoers file with permissions to run mount and umount commands
-RUN dnf install -y sudo
-RUN echo "noob ALL=(ALL) NOPASSWD: /usr/bin/mount, /usr/bin/umount" >> /etc/sudoers
+# Create the 'tmfs' user and add it to the 'root' group
+RUN useradd -u 10002 -g 0 -m -d /home/tmfs -s /bin/bash tmfs
+
+# Add the 'tmfs' user to the sudoers file with permissions to run mount and umount commands
+#RUN echo "tmfs    ALL=(ALL)       NOPASSWD: /usr/bin/mount, /usr/bin/umount" >> /etc/sudoers [FIXME-20241221]
+RUN echo "noob    ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
+RUN echo "tmfs    ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
 
 # Switch to the 'noob' user
-# USER 10001:0 # [FIXME-20241220-Skip this switch for the time being]
+USER 10001:0
 
 # We are using CMD and not ENDPOINT so 
 # we can override it when we use this image as agent. 
