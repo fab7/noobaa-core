@@ -255,15 +255,12 @@ ENV LD_PRELOAD=/usr/lib64/libjemalloc.so.2
 ###############
 
 # Create the 'noob' user and add it to the 'root' group
+#   Note: Trying to add another user such as 'tmfs' won't work ?!
 RUN useradd -u 10001 -g 0 -m -d /home/noob -s /bin/bash noob
 
-# Create the 'tmfs' user and add it to the 'root' group
-RUN useradd -u 10002 -g 0 -m -d /home/tmfs -s /bin/bash tmfs
-
-# Add the 'tmfs' user to the sudoers file with permissions to run mount and umount commands
-#RUN echo "tmfs    ALL=(ALL)       NOPASSWD: /usr/bin/mount, /usr/bin/umount" >> /etc/sudoers [FIXME-20241221]
+# Add the 'noob' user to the sudoers file with permissions to run mount and umount commands
 RUN echo "noob    ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
-RUN echo "tmfs    ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
+## [TODO] RUN echo "noob    ALL=(ALL)       NOPASSWD: /usr/bin/mount, /usr/bin/umount" >> /etc/sudoers [FIXME-20241221]
 
 # Switch to the 'noob' user
 USER 10001:0
