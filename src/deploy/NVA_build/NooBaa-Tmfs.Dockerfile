@@ -107,7 +107,7 @@ WORKDIR /
 RUN rm -rf /tier2-src
 
 ###########################################################
-# Step-3: Install some additionnal packages
+# Step-3: Install some additional packages
 ###########################################################
 RUN dnf install -y \
         attr \
@@ -149,7 +149,7 @@ ENV ENDPOINT_NODE_OPTIONS=''
 # Layers:
 #   Title: Installing dependencies
 #   Size: ~ 272 MB
-#   Cache: Rebuild when we adding/removing requirments
+#   Cache: Rebuild when we adding/removing requirements
 ##############################################################
 
 RUN dnf install -y epel-release
@@ -188,7 +188,7 @@ RUN chmod +x ./install_nodejs.sh && \
 
 ##############################################################
 # Layers:
-#   Title: Copying and giving premissions 
+#   Title: Copying and giving permissions 
 #   Size: ~ 1 MB
 #   Cache: Rebuild when we need to add another copy
 #
@@ -232,6 +232,22 @@ RUN cd /root/node_modules && \
     chgrp -R 0 /root/node_modules && \
     chmod -R 775 /root/node_modules
 
+##############################################################
+# Layers:
+#   Title: Creating TMFS directories and giving permissions
+##############################################################
+RUN mkdir -p /tmfs && \
+    mkdir -p /tmfs/tmfs_db && \
+    mkdir -p /tmfs/tmfs_init_files && \
+    mkdir -p /tmfs/tmfs_logs
+
+RUN chmod -R 770 /tmfs && \
+    chgrp -R 0   /tmfs
+    
+# Allow non-root user to access tye Fuse filesystem
+RUN sed -i 's/^# *user_allow_other/user_allow_other/' /etc/fuse.conf
+
+
 ###############
 # PORTS SETUP #
 ###############
@@ -260,7 +276,8 @@ RUN useradd -u 10001 -g 0 -m -d /home/noob -s /bin/bash noob
 
 # Add the 'noob' user to the sudoers file with permissions to run mount and umount commands
 RUN echo "noob    ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
-## [TODO] RUN echo "noob    ALL=(ALL)       NOPASSWD: /usr/bin/mount, /usr/bin/umount" >> /etc/sudoers [FIXME-20241221]
+## [FIXME-Restrict the scope of the sudo command] 
+## RUN echo "noob    ALL=(ALL)       NOPASSWD: /usr/bin/mount, /usr/bin/umount, /usr/bin/sg_persist" >> /etc/sudoers [FIXME]
 
 # Switch to the 'noob' user
 USER 10001:0
