@@ -232,22 +232,6 @@ RUN cd /root/node_modules && \
     chgrp -R 0 /root/node_modules && \
     chmod -R 775 /root/node_modules
 
-##############################################################
-# Layers:
-#   Title: Creating TMFS directories and giving permissions
-##############################################################
-RUN mkdir -p /tmfs && \
-    mkdir -p /tmfs/tmfs_db && \
-    mkdir -p /tmfs/tmfs_init_files && \
-    mkdir -p /tmfs/tmfs_logs
-
-RUN chmod -R 770 /tmfs && \
-    chgrp -R 0   /tmfs
-    
-# Allow non-root user to access tye Fuse filesystem
-RUN sed -i 's/^# *user_allow_other/user_allow_other/' /etc/fuse.conf
-
-
 ###############
 # PORTS SETUP #
 ###############
@@ -278,6 +262,19 @@ RUN useradd -u 10001 -g 0 -m -d /home/noob -s /bin/bash noob
 RUN echo "noob    ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
 ## [FIXME-Restrict the scope of the sudo command] 
 ## RUN echo "noob    ALL=(ALL)       NOPASSWD: /usr/bin/mount, /usr/bin/umount, /usr/bin/sg_persist" >> /etc/sudoers [FIXME]
+
+# Create TMFS directories and set 'noob' ownership
+RUN mkdir -p /tmfs && \
+    mkdir -p /tmfs/tmfs_db && \
+    mkdir -p /tmfs/tmfs_init_files && \
+    mkdir -p /tmfs/tmfs_logs
+
+RUN chmod -R 770 /tmfs && \
+    chgrp -R 0   /tmfs && \
+    chown -R noob:root /tmfs
+    
+# Allow non-root user to access the Fuse filesystem
+RUN sed -i 's/^# *user_allow_other/user_allow_other/' /etc/fuse.conf
 
 # Switch to the 'noob' user
 USER 10001:0
