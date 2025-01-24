@@ -264,20 +264,22 @@ RUN echo "noob    ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
 ## RUN echo "noob    ALL=(ALL)       NOPASSWD: /usr/bin/mount, /usr/bin/umount, /usr/bin/sg_persist" >> /etc/sudoers [FIXME]
 
 # Create TMFS directories and set 'noob' ownership
-RUN mkdir -p /tmfs && \
-    mkdir -p /tmfs/tmfs_db && \
-    mkdir -p /tmfs/tmfs_init_files && \
-    mkdir -p /tmfs/tmfs_logs
+RUN mkdir -p /tmfs_db && mkdir -p /tmfs_init_files && mkdir -p /tmfs_logs
 
-RUN chmod -R 770 /tmfs && \
-    chgrp -R 0   /tmfs && \
-    chown -R noob:root /tmfs
+RUN chmod -R 770 /tmfs_db   && chgrp -R 0 /tmfs_db   && chown -R noob:root /tmfs_db && \
+    chmod -R 770 /tmfs_logs && chgrp -R 0 /tmfs_logs && chown -R noob:root /tmfs_logs
+
+# Set the Setgid bit:
+RUN chmod g+s /tmfs_db && chmod g+s /tmfs_logs
     
 # Allow non-root user to access the Fuse filesystem
 RUN sed -i 's/^# *user_allow_other/user_allow_other/' /etc/fuse.conf
 
 # Switch to the 'noob' user
 USER 10001:0
+
+# Add a user specific alias for the 'tmadm' command
+RUN echo "alias tmadm='tmadm --mount-point=/noobaa_storage' " >> /home/noob/.bashrc
 
 # We are using CMD and not ENDPOINT so 
 # we can override it when we use this image as agent. 
