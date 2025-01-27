@@ -280,8 +280,14 @@ RUN sed -i 's/^# *user_allow_other/user_allow_other/' /etc/fuse.conf
 ############################# 
 USER 10001:0
 
-# Add a user specific alias for the 'tmadm' command
-RUN echo "alias tmadm='tmadm --mount-point=/noobaa_storage' " >> /home/noob/.bashrc
+# Add TMFS specific settings for user 'noob'
+RUN echo                                             >> /home/noob/.bashrc && \
+    echo "# TMFS specific settings for user 'noob' " >> /home/noob/.bashrc && \
+    echo "export TMFS_DATA_DIR='/noobaa_storage' "   >> /home/noob/.bashrc && \
+    echo "export TMFS_WORK_DIR='/tmfs_db' "          >> /home/noob/.bashrc && \
+    echo "export TMFS_LOG_DIR='/tmfs_logs' "         >> /home/noob/.bashrc && \
+    echo "alias tmadm='tmadm --mount-point=/noobaa_storage' " >> /home/noob/.bashrc && \
+    echo                                             >> /home/noob/.bashrc
 
 # We are using CMD and not ENDPOINT so 
 # we can override it when we use this image as agent. 
