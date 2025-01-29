@@ -264,13 +264,13 @@ RUN echo "noob    ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
 ## RUN echo "noob    ALL=(ALL)       NOPASSWD: /usr/bin/mount, /usr/bin/umount, /usr/bin/sg_persist" >> /etc/sudoers [FIXME]
 
 # Create TMFS directories and set 'noob' ownership
-# [OBSOLETE] RUN mkdir -p /tmfs_db && mkdir -p /tmfs_init_files && mkdir -p /tmfs_logs
+RUN mkdir -p /tmfs_db && mkdir -p /tmfs_init_files && mkdir -p /tmfs_logs
 
-# [OBSOLETE] RUN chmod -R 770 /tmfs_db   && chgrp -R 0 /tmfs_db   && chown -R noob:root /tmfs_db && \
-# [OBSOLETE]     chmod -R 770 /tmfs_logs && chgrp -R 0 /tmfs_logs && chown -R noob:root /tmfs_logs
+RUN chmod -R 770 /tmfs_db   && chgrp -R 0 /tmfs_db   && chown -R noob:root /tmfs_db && \
+    chmod -R 770 /tmfs_logs && chgrp -R 0 /tmfs_logs && chown -R noob:root /tmfs_logs
 
 # Set the Setgid bit:
-# [OBSOLETE] RUN chmod g+s /tmfs_db && chmod g+s /tmfs_logs
+RUN chmod g+s /tmfs_db && chmod g+s /tmfs_logs
     
 # Allow non-root user to access the Fuse filesystem
 RUN sed -i 's/^# *user_allow_other/user_allow_other/' /etc/fuse.conf
