@@ -217,6 +217,41 @@ init_noobaa_agent() {
   run_internal_process node --unhandled-rejections=warn ./src/agent/agent_cli
 }
 
+# init_noobaa_tmfs_agent() is a custom version of init_noobaa_agent().
+#
+# This function launches the TMFS initialization scripts in addition to the
+# default 'init_noobaa_agent()' initialization.
+#
+# Note: The TMFS initialization script is dependent on '/noobaa_storage'
+#       being mounted and cannot be run beforehand.
+init_noobaa_tmfs_agent() {
+  fix_non_root_user
+
+  local dir="/noobaa_storage"
+  mkdir -p ${dir}
+  local dir_id=$(stat -c '%u' ${dir})
+  local current_id=$(id -u)
+
+  # change ownership and permissions of noobaa_storage path
+  if [ "${dir_id}" != "${current_id}" ]
+  then
+    echo "uid change has been identified - will change from uid: ${dir_id} to new uid: ${current_id}"
+    time ${KUBE_PV_CHOWN} agent ${current_id}
+  fi
+
+  cd /root/node_modules/noobaa-core/
+  prepare_agent_conf
+
+  # Launching the TMFS script here
+  echo "######################################################################"
+  echo "$(date) NooBaa-Tmfs: Starting TMFS init script"
+  echo "######################################################################"
+  /tmfs_init_files/tmfs_init.sh
+  echo -e "\n\n"
+
+  run_internal_process node --unhandled-rejections=warn ./src/agent/agent_cli
+}
+
 migrate_dbs() {
   fix_non_root_user
   
@@ -227,6 +262,9 @@ migrate_dbs() {
 if [ "${RUN_INIT}" == "agent" ]
 then
   init_noobaa_agent
+elif [ "${RUN_INIT}" == "tmfs-agent" ]
+then
+  init_noobaa_tmfs_agent
 elif [ "${RUN_INIT}" == "init_mongo" ]
 then
   prepare_mongo_pv
