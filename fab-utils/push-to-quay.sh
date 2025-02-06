@@ -9,8 +9,8 @@
 # 
 
 echo
-echo "Tagging and pushing the NooBaa Operator image to Quay.io"
-echo "========================================================"
+echo "Tagging and pushing the NooBaa Core image to Quay.io"
+echo "===================================================="
 
 # STEP-1: List created image
 docker images
