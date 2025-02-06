@@ -112,6 +112,7 @@ RUN rm -rf /tier2-src
 RUN dnf install -y \
         attr \
         file fuse \
+        lspci \
         lsscsi \
         procps \
         sg3_utils sudo \
