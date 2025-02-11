@@ -263,6 +263,12 @@ RUN echo "noob    ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
 ## [FIXME-Restrict the scope of the sudo command] 
 ## RUN echo "noob    ALL=(ALL)       NOPASSWD: /usr/bin/mount, /usr/bin/umount, /usr/bin/sg_persist" >> /etc/sudoers [FIXME]
 
+# Create 'tmfs_db' directory with 'noob' ownership
+RUN mkdir -p /tmfs_db && \
+    chmod -R 770 /tmfs_db && \
+    chgrp -R 0 /tmfs_db && \
+    chown -R noob:root /tmfs_db
+
 ## [FIXME-We use a ConfigMap to ease the bring-up for the time being]
 ## # Create 'tmfs_init_files' directory with 'noob' ownership
 ## RUN mkdir -p /tmfs_init_files && \
