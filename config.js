@@ -266,7 +266,7 @@ config.NOOBAA_EPOCH = 1430006400000;
 // IO CONFIG //
 ///////////////
 
-config.MAX_OBJECT_PART_SIZE = 64 * 1024 * 1024;
+config.MAX_OBJECT_PART_SIZE = 1 * 1024 * 1024 * 1024;  //  was 64 * 1024 * 1024;  // 20250414
 
 config.IO_CHUNK_READ_CACHE_SIZE = 256 * 1024 * 1024;
 
