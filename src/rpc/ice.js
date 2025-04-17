@@ -990,7 +990,9 @@ Ice.prototype._upgrade_to_tls = function(session) {
     function once_connected() {
         dbg.log3('ICE TLS CONNECTED', session.key, tls_conn.getCipher());
         session.tcp = tls_conn;
-        tls_conn.frame_stream = new FrameStream(tls_conn);
+        //[OBSOLETE-20250415] tls_conn.frame_stream = new FrameStream(tls_conn);
+        //[REPLACED-20250415] Add support for messages larger than 64KB
+        tls_conn.frame_stream = new FrameStream(tls_conn, null, ICE_FRAME_CONFIG);
         self.emit('connect', session);
     }
 };
